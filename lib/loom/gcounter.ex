@@ -16,13 +16,13 @@ defmodule Loom.GCounter do
   @type actor :: term
   @type dot :: {actor, pos_integer}
   @type t :: %Counter{
-    counter: %{
-      actor => pos_integer
-    },
-    ctx: %{
-      actor => pos_integer
-    }
-  }
+          counter: %{
+            actor => pos_integer
+          },
+          ctx: %{
+            actor => pos_integer
+          }
+        }
 
   defstruct counter: %{}, ctx: %{}
 
@@ -44,7 +44,7 @@ defmodule Loom.GCounter do
     42
 
   """
-  @spec new([values: [{actor, pos_integer}]]) :: t
+  @spec new(values: [{actor, pos_integer}]) :: t
   def new(opts) do
     new_values = Keyword.get(opts, :values, []) |> Enum.into(%{})
     %Counter{counter: new_values}
@@ -61,7 +61,7 @@ defmodule Loom.GCounter do
   """
   @spec inc(t, actor, pos_integer) :: t
   def inc(%Counter{counter: c}, actor, int \\ 1) when int > 0 do
-    %Counter{counter: Map.update(c, actor, int, &(&1+int))}
+    %Counter{counter: Map.update(c, actor, int, &(&1 + int))}
   end
 
   @doc """
@@ -71,7 +71,7 @@ defmodule Loom.GCounter do
   """
   @spec value(t) :: non_neg_integer
   def value(%Counter{counter: c}) do
-    Map.values(c) |> Enum.sum
+    Map.values(c) |> Enum.sum()
   end
 
   @doc """
@@ -88,13 +88,11 @@ defmodule Loom.GCounter do
   """
   @spec join(t, t) :: t
   def join(%Counter{counter: c1}, %Counter{counter: c2}) do
-    %Counter{counter: Map.merge(c1, c2, fn (_,v1,v2) -> max(v1,v2) end)}
+    %Counter{counter: Map.merge(c1, c2, fn _, v1, v2 -> max(v1, v2) end)}
   end
-
 end
 
 defimpl Loom.CRDT, for: Loom.GCounter do
-
   alias Loom.GCounter, as: Ctr
 
   @doc """
@@ -104,7 +102,8 @@ defimpl Loom.CRDT, for: Loom.GCounter do
   returns an integer.
   """
   def ops(_crdt) do
-    [ update: [
+    [
+      update: [
         inc: [:actor],
         inc: [:actor, :int]
       ],
@@ -113,6 +112,7 @@ defimpl Loom.CRDT, for: Loom.GCounter do
       ]
     ]
   end
+
   @doc """
   Applies a CRDT to a counter in an abstract way.
 
@@ -130,6 +130,7 @@ defimpl Loom.CRDT, for: Loom.GCounter do
   def apply(crdt, {:inc, actor}), do: Ctr.inc(crdt, actor)
   def apply(crdt, {:inc, actor, int}), do: Ctr.inc(crdt, actor, int)
   def apply(crdt, :value), do: Ctr.value(crdt)
+
   @doc """
   Joins 2 CRDT's of the same type.
 
@@ -137,10 +138,10 @@ defimpl Loom.CRDT, for: Loom.GCounter do
   different counters and merge their semantics, as long as the datatype grows
   monotonically.
   """
-  def join(%Ctr{}=a, %Ctr{}=b), do: Ctr.join(a, b)
+  def join(%Ctr{} = a, %Ctr{} = b), do: Ctr.join(a, b)
+
   @doc """
   Returns the most natural value for a counter, an integer.
   """
   def value(crdt), do: Ctr.value(crdt)
-
 end

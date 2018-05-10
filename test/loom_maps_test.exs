@@ -5,10 +5,9 @@ defmodule LoomMapsTest do
   alias Loom.PNCounterMap, as: CMap
 
   test "Basic definition..." do
-    defmap C
-    m = C.new |> C.inc(:a, 5) |> C.dec(:a, 3)
-    c = CMap.new |> CMap.put(:a, "omg", m)
+    defmap(C)
+    m = C.new() |> C.inc(:a, 5) |> C.dec(:a, 3)
+    c = CMap.new() |> CMap.put(:a, "omg", m)
     assert 2 == CMap.get_value(c, "omg")
   end
-
 end

@@ -13,8 +13,8 @@ defmodule Loom.RWORSet do
   @type actor :: term
   @type value :: term
   @opaque t :: %Set{
-    dots: Dots.t
-  }
+            dots: Dots.t()
+          }
 
   defstruct dots: Dots.new()
 
@@ -39,13 +39,16 @@ defmodule Loom.RWORSet do
       ["test1", "test2"]
 
   """
-  @spec add(t, actor, value) :: {t,t}
-  @spec add({t,t}, actor, value) :: {t,t}
-  def add(%Set{}=set, actor, value), do: add({set, Set.new}, actor, value)
+  @spec add(t, actor, value) :: {t, t}
+  @spec add({t, t}, actor, value) :: {t, t}
+  def add(%Set{} = set, actor, value), do: add({set, Set.new()}, actor, value)
+
   def add({%Set{dots: d}, %Set{dots: delta_dots}}, actor, value) do
-    {new_dots, new_delta_dots} = {d, delta_dots}
-                               |> Dots.remove(&({value,true}==&1 || {value,false}==&1))
-                               |> Dots.add(actor, {value, true})
+    {new_dots, new_delta_dots} =
+      {d, delta_dots}
+      |> Dots.remove(&({value, true} == &1 || {value, false} == &1))
+      |> Dots.add(actor, {value, true})
+
     {%Set{dots: new_dots}, %Set{dots: new_delta_dots}}
   end
 
@@ -57,17 +60,20 @@ defmodule Loom.RWORSet do
       false
 
   """
-  @spec remove(t, actor, value) :: {t,t}
-  @spec remove({t,t}, actor, value) :: {t,t}
-  def remove(%Set{}=set, actor, value), do: remove({set, Set.new}, actor, value)
-  def remove({%Set{dots: d}=set, %Set{dots: delta_dots}}, actor, value) do
+  @spec remove(t, actor, value) :: {t, t}
+  @spec remove({t, t}, actor, value) :: {t, t}
+  def remove(%Set{} = set, actor, value), do: remove({set, Set.new()}, actor, value)
+
+  def remove({%Set{dots: d} = set, %Set{dots: delta_dots}}, actor, value) do
     if member?(set, value) do
-      {new_dots, new_delta_dots} = {d, delta_dots}
-                                 |> Dots.remove(&({value,true}==&1 || {value,false}==&1))
-                                 |> Dots.add(actor, {value, false})
+      {new_dots, new_delta_dots} =
+        {d, delta_dots}
+        |> Dots.remove(&({value, true} == &1 || {value, false} == &1))
+        |> Dots.add(actor, {value, false})
+
       {%Set{dots: new_dots}, %Set{dots: new_delta_dots}}
     else
-      raise Loom.PreconditionError, [unobserved: value]
+      raise Loom.PreconditionError, unobserved: value
     end
   end
 
@@ -82,8 +88,9 @@ defmodule Loom.RWORSet do
   @spec member?({t, t}, value) :: boolean
   @spec member?(t, value) :: boolean
   def member?({set, _}, value), do: member?(set, value)
+
   def member?(%Set{dots: d}, value) do
-    Dots.dots(d) |> Enum.any?(fn {_, term_pair} -> term_pair == {value,true} end)
+    Dots.dots(d) |> Enum.any?(fn {_, term_pair} -> term_pair == {value, true} end)
   end
 
   @doc """
@@ -97,10 +104,10 @@ defmodule Loom.RWORSet do
   @spec value({t, t}) :: [value]
   @spec value(t) :: [value]
   def value({set, %Set{}}), do: value(set)
-  def value(%Set{dots: d}) do
-    (for {_, {v, true}} <- Dots.dots(d), do: v) |> Enum.uniq
-  end
 
+  def value(%Set{dots: d}) do
+    for({_, {v, true}} <- Dots.dots(d), do: v) |> Enum.uniq()
+  end
 
   @doc """
   Joins 2 sets together.
@@ -112,15 +119,13 @@ defmodule Loom.RWORSet do
       [1,2]
 
   """
-  @spec join(t,t) :: t
+  @spec join(t, t) :: t
   def join(%Set{dots: d1}, %Set{dots: d2}) do
     %Set{dots: Dots.join(d1, d2)}
   end
-
 end
 
 defimpl Loom.CRDT, for: Loom.RWORSet do
-
   alias Loom.RWORSet, as: Set
 
   @doc """
@@ -133,7 +138,7 @@ defimpl Loom.CRDT, for: Loom.RWORSet do
     [
       update: [
         add: [:actor, :value],
-        remove: [:actor, :value],
+        remove: [:actor, :value]
       ],
       read: [
         is_member: [:value],
@@ -157,10 +162,12 @@ defimpl Loom.CRDT, for: Loom.RWORSet do
     {reg, _} = Set.add(crdt, actor, value)
     reg
   end
+
   def apply(crdt, {:remove, actor, value}) do
     {reg, _} = Set.remove(crdt, actor, value)
     reg
   end
+
   def apply(crdt, {:is_member, value}), do: Set.member?(crdt, value)
   def apply(crdt, :value), do: Set.value(crdt)
 
@@ -176,7 +183,7 @@ defimpl Loom.CRDT, for: Loom.RWORSet do
       ["test","test2"]
 
   """
-  @spec join(Set.t, Set.t) :: Set.t
+  @spec join(Set.t(), Set.t()) :: Set.t()
   def join(a, b), do: Set.join(a, b)
 
   @doc """
@@ -187,5 +194,4 @@ defimpl Loom.CRDT, for: Loom.RWORSet do
 
   """
   def value(crdt), do: Set.value(crdt)
-
 end

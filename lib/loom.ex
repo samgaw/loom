@@ -14,7 +14,7 @@ defmodule Loom do
     defexception [:details, :message]
 
     def exception(e) do
-      msg = "Precondition failed: #{inspect e}"
+      msg = "Precondition failed: #{inspect(e)}"
       %Loom.PreconditionError{message: msg, details: e}
     end
   end
@@ -31,11 +31,9 @@ defmodule Loom do
     def apply(crdt, op)
 
     @doc "Join 2 CRDT's"
-    def join(a,b)
+    def join(a, b)
 
     @doc "Returns a natural value"
     def value(crdt)
-
   end
-
 end

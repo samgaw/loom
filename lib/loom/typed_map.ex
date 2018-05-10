@@ -10,8 +10,8 @@ defmodule Loom.TypedORMap do
   defmacro defmap(type) do
     type = Macro.expand(type, __CALLER__)
     name = :"#{type}Map"
-    quote location: :keep do
 
+    quote location: :keep do
       defmodule unquote(name) do
         @moduledoc """
         This module is automatically created via #{unquote(__MODULE__)}.defmap
@@ -29,10 +29,10 @@ defmodule Loom.TypedORMap do
         @type crdt :: %Type{}
         @type value :: term
         @opaque t :: %__MODULE__{
-          map: M.t
-        }
+                  map: M.t()
+                }
 
-        defstruct map: M.new
+        defstruct map: M.new()
 
         @doc """
         Returns a new #{unquote(name)}.
@@ -69,7 +69,7 @@ defmodule Loom.TypedORMap do
         Insert a value, and merge it with any that exist already
         """
         @spec put(t, actor, key, crdt) :: t
-        def put(%__MODULE__{map: map}, actor, key, %Type{}=value) do
+        def put(%__MODULE__{map: map}, actor, key, %Type{} = value) do
           M.put(map, actor, key, value)
           |> to_type
         end
@@ -142,9 +142,8 @@ defmodule Loom.TypedORMap do
         def value(%__MODULE__{map: map}), do: M.value(map)
 
         # defoverridable [new: 0, delta: 1, clear_delta: 2, put: 3, delta: ]
-        @spec to_type(M.t) :: t
+        @spec to_type(M.t()) :: t
         defp to_type(map), do: %__MODULE__{map: map}
-
       end
 
       defimpl Loom.CRDT, for: unquote(name) do
@@ -162,50 +161,48 @@ defmodule Loom.TypedORMap do
             update: [
               delete: [:key, :value_type],
               put: [:actor, :key, :value]
-              ],
-              read: [
-                get: [:key],
-                get_value: [:key],
-                keys: [],
-                has_key: [],
-                value: []
-              ]
+            ],
+            read: [
+              get: [:key],
+              get_value: [:key],
+              keys: [],
+              has_key: [],
+              value: []
             ]
-          end
+          ]
+        end
 
-          @doc """
-          Applies a CRDT to a counter in an abstract way.
+        @doc """
+        Applies a CRDT to a counter in an abstract way.
 
-          This is for ops-based support.
-          """
-          def apply(crdt, {:put, actor, key, value}) do
-            NMap.put(crdt, actor, key, value)
-          end
-          def apply(crdt, {:delete, key}) do
-            NMap.delete(crdt, key)
-          end
-          def apply(crdt, {:get, key}), do: NMap.get(crdt, key)
-          def apply(crdt, {:get_value, key}), do: NMap.get_value(crdt, key)
-          def apply(crdt, {:has_key, key}), do: NMap.has_key?(crdt, key)
-          def apply(crdt, :keys), do: NMap.keys(crdt)
-          def apply(crdt, :value), do: NMap.value(crdt)
+        This is for ops-based support.
+        """
+        def apply(crdt, {:put, actor, key, value}) do
+          NMap.put(crdt, actor, key, value)
+        end
 
-          @doc """
-          Joins 2 CRDT's of the same type.
+        def apply(crdt, {:delete, key}) do
+          NMap.delete(crdt, key)
+        end
 
-          2 different types cannot mix (yet).
-          """
-          def join(a, b), do: NMap.join(a, b)
+        def apply(crdt, {:get, key}), do: NMap.get(crdt, key)
+        def apply(crdt, {:get_value, key}), do: NMap.get_value(crdt, key)
+        def apply(crdt, {:has_key, key}), do: NMap.has_key?(crdt, key)
+        def apply(crdt, :keys), do: NMap.keys(crdt)
+        def apply(crdt, :value), do: NMap.value(crdt)
 
-          @doc """
-          Returns the most natural primitive value for a set, a list.
-          """
-          def value(crdt), do: NMap.value(crdt)
+        @doc """
+        Joins 2 CRDT's of the same type.
 
+        2 different types cannot mix (yet).
+        """
+        def join(a, b), do: NMap.join(a, b)
+
+        @doc """
+        Returns the most natural primitive value for a set, a list.
+        """
+        def value(crdt), do: NMap.value(crdt)
       end
-
     end
-
   end
-
 end

@@ -17,10 +17,10 @@ defmodule Loom.MVRegister do
   @type actor :: term
   @type value :: term
   @type t :: %Reg{
-    dots: Dots.t,
-    keep_delta: boolean,
-    delta: Dots.t | nil
-  }
+          dots: Dots.t(),
+          keep_delta: boolean,
+          delta: Dots.t() | nil
+        }
 
   defstruct dots: %Dots{}, keep_delta: true, delta: nil
 
@@ -35,7 +35,7 @@ defmodule Loom.MVRegister do
 
   """
   @spec new :: t
-  def new, do: %Reg{delta: Dots.new}
+  def new, do: %Reg{delta: Dots.new()}
 
   @doc """
   Grab the delta from an MVRegister for lower-cost synchronization.
@@ -59,7 +59,7 @@ defmodule Loom.MVRegister do
       true
   """
   @spec clear_delta(t) :: t
-  def clear_delta(%Reg{}=reg), do: %Reg{reg|delta: Dots.new}
+  def clear_delta(%Reg{} = reg), do: %Reg{reg | delta: Dots.new()}
 
   @doc """
   Sets a value, erasing any current values.
@@ -73,11 +73,13 @@ defmodule Loom.MVRegister do
 
   """
   @spec set(t, actor, term) :: t
-  def set(%Reg{dots: d, delta: delta}=reg, actor, value) do
-    {new_dots, new_delta_dots} = {d, delta}
-                                |> Dots.remove()
-                                |> Dots.add(actor, value)
-    %Reg{reg|dots: new_dots, delta: new_delta_dots}
+  def set(%Reg{dots: d, delta: delta} = reg, actor, value) do
+    {new_dots, new_delta_dots} =
+      {d, delta}
+      |> Dots.remove()
+      |> Dots.add(actor, value)
+
+    %Reg{reg | dots: new_dots, delta: new_delta_dots}
   end
 
   @doc """
@@ -91,11 +93,10 @@ defmodule Loom.MVRegister do
       nil
   """
   @spec empty(t) :: t
-  def empty(%Reg{dots: d, delta: delta}=reg) do
+  def empty(%Reg{dots: d, delta: delta} = reg) do
     {new_dots, new_delta_dots} = {d, delta} |> Dots.remove()
-    %Reg{reg|dots: new_dots, delta: new_delta_dots}
+    %Reg{reg | dots: new_dots, delta: new_delta_dots}
   end
-
 
   @doc """
   Joins 2 MVRegisters
@@ -107,8 +108,8 @@ defmodule Loom.MVRegister do
       ["test2", "take over"]
   """
   @spec join(t, t) :: t
-  def join(%Reg{dots: d1}=reg, %Reg{dots: d2}) do
-    %Reg{reg|dots: Dots.join(d1, d2)}
+  def join(%Reg{dots: d1} = reg, %Reg{dots: d2}) do
+    %Reg{reg | dots: Dots.join(d1, d2)}
   end
 
   @doc """
@@ -118,18 +119,17 @@ defmodule Loom.MVRegister do
   """
   @spec value(t) :: [term] | term | nil
   def value(%Reg{dots: d}) do
-    values = (for {_, v} <- Dots.dots(d), do: v) |> Enum.uniq
+    values = for({_, v} <- Dots.dots(d), do: v) |> Enum.uniq()
+
     case values do
       [] -> nil
       [singleton] -> singleton
       mv -> mv
     end
   end
-
 end
 
 defimpl Loom.CRDT, for: Loom.MVRegister do
-
   alias Loom.MVRegister, as: Reg
 
   @doc """
@@ -139,8 +139,9 @@ defimpl Loom.CRDT, for: Loom.MVRegister do
   returns a value.
   """
   def ops(_crdt) do
-    [ update: [
-        set: [:actor, :value],
+    [
+      update: [
+        set: [:actor, :value]
       ],
       read: [
         value: []
@@ -163,6 +164,7 @@ defimpl Loom.CRDT, for: Loom.MVRegister do
   def apply(crdt, {:set, actor, value}) do
     Reg.set(crdt, actor, value)
   end
+
   def apply(crdt, :value), do: Reg.value(crdt)
 
   @doc """
@@ -185,5 +187,4 @@ defimpl Loom.CRDT, for: Loom.MVRegister do
   Returns the most natural value for a counter, an integer.
   """
   def value(crdt), do: Reg.value(crdt)
-
 end

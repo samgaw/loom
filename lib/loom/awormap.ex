@@ -15,12 +15,12 @@ defmodule Loom.AWORMap do
   @type crdt :: term
   @type type :: atom | %{__struct__: atom}
   @opaque t :: %M{
-    dots: Dots.t,
-    keep_delta: boolean,
-    delta: Dots.t
-  }
+            dots: Dots.t(),
+            keep_delta: boolean,
+            delta: Dots.t()
+          }
 
-  defstruct dots: Dots.new, keep_delta: true, delta: nil
+  defstruct dots: Dots.new(), keep_delta: true, delta: nil
 
   @doc """
   Returns a new AWORMap
@@ -32,7 +32,7 @@ defmodule Loom.AWORMap do
       nil
   """
   @spec new() :: t
-  def new, do: %M{delta: Dots.new}
+  def new, do: %M{delta: Dots.new()}
 
   @doc """
   Returns the currently-running delta of an AWORMap
@@ -51,20 +51,23 @@ defmodule Loom.AWORMap do
       true
   """
   @spec clear_delta(t) :: t
-  def clear_delta(%M{}=m), do: %M{m|delta: Dots.new}
+  def clear_delta(%M{} = m), do: %M{m | delta: Dots.new()}
 
   @doc """
   Insert a value, and merge it with any that exist already
   """
   @spec put(t, actor, key, crdt) :: t
-  def put(%M{dots: d, delta: d_dots}=m, actor, key, crdt) do
+  def put(%M{dots: d, delta: d_dots} = m, actor, key, crdt) do
     %{__struct__: struct_name} = crdt
     new_crdt = CRDT.join(crdt, get(m, key, crdt))
-    {new_dots, new_d_dots} = {d, d_dots}
-                             |> Dots.remove(fn {dk, %{__struct__: ds}} ->
-                                  dk == key && ds == struct_name
-                                end)
-                             |> Dots.add(actor, {key, new_crdt})
+
+    {new_dots, new_d_dots} =
+      {d, d_dots}
+      |> Dots.remove(fn {dk, %{__struct__: ds}} ->
+        dk == key && ds == struct_name
+      end)
+      |> Dots.add(actor, {key, new_crdt})
+
     %M{dots: new_dots, delta: new_d_dots}
   end
 
@@ -76,11 +79,14 @@ defmodule Loom.AWORMap do
   # global context, but that breaks internal contiguity needed for delta-CRDT's.
   @spec delete(t, key, type) :: t
   def delete(set, key, %{__struct__: module}), do: delete(set, key, module)
+
   def delete(%M{dots: d, delta: d_dots}, key, module) do
-    {new_dots, new_d_dots} = {d, d_dots}
-                              |> Dots.remove(fn {dk, %{__struct__: ds}} ->
-                                dk == key && ds == module
-                              end)
+    {new_dots, new_d_dots} =
+      {d, d_dots}
+      |> Dots.remove(fn {dk, %{__struct__: ds}} ->
+        dk == key && ds == module
+      end)
+
     %M{dots: new_dots, delta: new_d_dots}
   end
 
@@ -88,8 +94,8 @@ defmodule Loom.AWORMap do
   Join a map
   """
   @spec join(t, t) :: t
-  def join(%M{dots: d1}=m, %M{dots: d2}) do
-    %M{m|dots: Dots.join(d1, d2)}
+  def join(%M{dots: d1} = m, %M{dots: d2}) do
+    %M{m | dots: Dots.join(d1, d2)}
   end
 
   @doc """
@@ -104,9 +110,9 @@ defmodule Loom.AWORMap do
   nil
   """
   @spec empty(t) :: t
-  def empty(%M{dots: d, delta: d_dots}=m) do
+  def empty(%M{dots: d, delta: d_dots} = m) do
     {new_d, new_d_dots} = Dots.empty({d, d_dots})
-    %M{m|dots: new_d, delta: new_d_dots}
+    %M{m | dots: new_d, delta: new_d_dots}
   end
 
   @doc """
@@ -114,11 +120,9 @@ defmodule Loom.AWORMap do
   """
   @spec get(t, key, type) :: term
   def get(map, key, module) when is_atom(module), do: get(map, key, struct(module))
-  def get(%M{dots: d}, key, %{__struct__: module}=old_crdt) do
-    (for {_,{k, crdt}} <- Dots.dots(d),
-        k == key,
-        module == get_structname(crdt),
-        do: crdt)
+
+  def get(%M{dots: d}, key, %{__struct__: module} = old_crdt) do
+    for({_, {k, crdt}} <- Dots.dots(d), k == key, module == get_structname(crdt), do: crdt)
     |> Enum.reduce(old_crdt, &CRDT.join(&1, &2))
   end
 
@@ -128,15 +132,15 @@ defmodule Loom.AWORMap do
   Get a value's value for a key-module pair
   """
   @spec get_value(t, key, type) :: term
-  def get_value(map, key, module), do: get(map, key, module) |> CRDT.value
+  def get_value(map, key, module), do: get(map, key, module) |> CRDT.value()
 
   @doc """
   Returns the set of all key-module pairs
   """
-  @spec keys(t) :: [{key,type}]
+  @spec keys(t) :: [{key, type}]
   def keys(%M{dots: d}) do
-    (for {_,{k, %{__struct__: module}}} <- Dots.dots(d), do: {k, module})
-    |> Enum.uniq
+    for({_, {k, %{__struct__: module}}} <- Dots.dots(d), do: {k, module})
+    |> Enum.uniq()
   end
 
   @doc """
@@ -154,7 +158,7 @@ defmodule Loom.AWORMap do
   def empty?(%M{dots: d}) do
     # (Dots.dots(d) |> Enum.filter(fn {_, {_,crdt}} -> CRDT.empty?(crdt) end) |> Enum.count) == 0
     # TODO: implement empty:
-    (Dots.dots(d) |> Enum.count) == 0
+    Dots.dots(d) |> Enum.count() == 0
   end
 
   @doc """
@@ -162,8 +166,9 @@ defmodule Loom.AWORMap do
   """
   @spec has_key?(t, key, module) :: boolean
   def has_key?(%M{dots: d}, key, module) do
-    Dots.dots(d) |> Enum.any?(fn
-      {_,{k, %{__struct__: m}}} when k == key and m == module -> true
+    Dots.dots(d)
+    |> Enum.any?(fn
+      {_, {k, %{__struct__: m}}} when k == key and m == module -> true
       _ -> false
     end)
   end
@@ -171,23 +176,23 @@ defmodule Loom.AWORMap do
   @doc """
   Returns a map of values for key-module pairs
   """
-  @spec value(t) :: [{key,term}] | nil
+  @spec value(t) :: [{key, term}] | nil
   def value(%M{dots: d}) do
-    res = Enum.reduce(Dots.dots(d), %{}, fn {_, {k, %{__struct__: module}=crdt}}, values ->
-            Map.update(values, {k, module}, crdt, &CRDT.join(crdt,&1))
-          end)
-          |> Enum.map(fn {k,v} -> {k, CRDT.value(v)} end)
-          |> Enum.into(%{})
+    res =
+      Enum.reduce(Dots.dots(d), %{}, fn {_, {k, %{__struct__: module} = crdt}}, values ->
+        Map.update(values, {k, module}, crdt, &CRDT.join(crdt, &1))
+      end)
+      |> Enum.map(fn {k, v} -> {k, CRDT.value(v)} end)
+      |> Enum.into(%{})
+
     case map_size(res) do
       0 -> nil
       _ -> res
     end
   end
-
 end
 
 defimpl Loom.CRDT, for: Loom.AWORMap do
-
   alias Loom.AWORMap, as: KVSet
 
   @doc """
@@ -247,9 +252,11 @@ defimpl Loom.CRDT, for: Loom.AWORMap do
   def apply(crdt, {:put, actor, key, value}) do
     KVSet.put(crdt, actor, key, value)
   end
+
   def apply(crdt, {:delete, key, module}) do
     KVSet.delete(crdt, key, module)
   end
+
   def apply(crdt, {:get, key, module}), do: KVSet.get(crdt, key, module)
   def apply(crdt, {:get_value, key, module}), do: KVSet.get_value(crdt, key, module)
   def apply(crdt, {:has_key, key, module}), do: KVSet.has_key?(crdt, key, module)
@@ -281,5 +288,4 @@ defimpl Loom.CRDT, for: Loom.AWORMap do
 
   """
   def value(crdt), do: KVSet.value(crdt)
-
 end

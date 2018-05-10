@@ -10,10 +10,11 @@ defmodule Loom.LWWRegister do
   This is one of the most simple CRDT's possible.
   """
   alias __MODULE__, as: Reg
+
   @type t :: %Reg{
-    value: term,
-    clock: nil | pos_integer
-  }
+          value: term,
+          clock: nil | pos_integer
+        }
 
   defstruct value: nil, clock: nil
 
@@ -49,7 +50,6 @@ defmodule Loom.LWWRegister do
   """
   @spec new(term, pos_integer) :: t
   def new(value, clock), do: new() |> set(value, clock)
-
 
   @doc """
   Sets a value using the built-in clock
@@ -103,11 +103,13 @@ defmodule Loom.LWWRegister do
   def join(a, a), do: a
   def join(a, %Reg{clock: nil}), do: a
   def join(%Reg{clock: nil}, b), do: b
-  def join(%Reg{clock: c}=a, %Reg{clock: c}=b) do
+
+  def join(%Reg{clock: c} = a, %Reg{clock: c} = b) do
     if a > b, do: a, else: b
   end
-  def join(%Reg{clock: ac}=a, %Reg{clock: bc}) when ac > bc, do: a
-  def join(%Reg{clock: ac}, %Reg{clock: bc}=b) when ac < bc, do: b
+
+  def join(%Reg{clock: ac} = a, %Reg{clock: bc}) when ac > bc, do: a
+  def join(%Reg{clock: ac}, %Reg{clock: bc} = b) when ac < bc, do: b
 
   @doc """
   Returns the natural value of the register. Can be any type, really.
@@ -116,14 +118,12 @@ defmodule Loom.LWWRegister do
   def value(%Reg{value: value}), do: value
 
   defp make_microtime do
-    {mega, sec, micro} = :os.timestamp
-    (mega * 1000000 + sec) * 1000000 + micro
+    {mega, sec, micro} = :os.timestamp()
+    (mega * 1_000_000 + sec) * 1_000_000 + micro
   end
-
 end
 
 defimpl Loom.CRDT, for: Loom.LWWRegister do
-
   alias Loom.LWWRegister, as: Reg
 
   @doc """
@@ -133,15 +133,17 @@ defimpl Loom.CRDT, for: Loom.LWWRegister do
   returns a value.
   """
   def ops(_crdt) do
-    [ update: [
-      set: [:value],
-      set: [:value, :clock]
+    [
+      update: [
+        set: [:value],
+        set: [:value, :clock]
       ],
       read: [
         value: []
       ]
     ]
   end
+
   @doc """
   Applies a CRDT to a counter in an abstract way.
 
@@ -163,6 +165,7 @@ defimpl Loom.CRDT, for: Loom.LWWRegister do
   def apply(crdt, {:set, value}), do: Reg.set(crdt, value)
   def apply(crdt, {:set, value, clock}), do: Reg.set(crdt, value, clock)
   def apply(crdt, :value), do: Reg.value(crdt)
+
   @doc """
   Joins 2 CRDT's of the same type.
 
@@ -182,11 +185,10 @@ defimpl Loom.CRDT, for: Loom.LWWRegister do
       "test"
 
   """
-  def join(a, %Reg{}=b), do: Reg.join(a, b)
+  def join(a, %Reg{} = b), do: Reg.join(a, b)
 
   @doc """
   Returns the most natural value for a counter, an integer.
   """
   def value(crdt), do: Reg.value(crdt)
-
 end

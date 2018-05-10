@@ -18,13 +18,13 @@ defmodule Loom.PNCounter do
   @type actor :: term
   @type dot :: {actor, pos_integer}
   @type t :: %Counter{
-    p: %{
-      actor => pos_integer
-    },
-    n: %{
-      actor => pos_integer
-    }
-  }
+          p: %{
+            actor => pos_integer
+          },
+          n: %{
+            actor => pos_integer
+          }
+        }
 
   defstruct p: %{}, n: %{}
 
@@ -47,18 +47,22 @@ defmodule Loom.PNCounter do
       42
 
   """
-  @spec new([values: [{actor, {non_neg_integer,non_neg_integer}}]]) :: t
+  @spec new(values: [{actor, {non_neg_integer, non_neg_integer}}]) :: t
   def new(opts) do
     values = Keyword.get(opts, :values, [])
-    if Enum.any?(values, fn {_, {v1,v2}} -> v1 < 0 || v2 < 0 end) do
+
+    if Enum.any?(values, fn {_, {v1, v2}} -> v1 < 0 || v2 < 0 end) do
       raise ArgumentError, "Values must be >= 0"
     end
-    {p, n} = Enum.reduce(values, {%{},%{}}, fn {actor, {inc,dec}}, {p, n} ->
-                {
-                  (if inc, do: Map.put(p, actor, inc), else: p),
-                  (if dec, do: Map.put(n, actor, dec), else: n)
-                }
-              end)
+
+    {p, n} =
+      Enum.reduce(values, {%{}, %{}}, fn {actor, {inc, dec}}, {p, n} ->
+        {
+          if(inc, do: Map.put(p, actor, inc), else: p),
+          if(dec, do: Map.put(n, actor, dec), else: n)
+        }
+      end)
+
     %Counter{p: p, n: n}
   end
 
@@ -74,8 +78,8 @@ defmodule Loom.PNCounter do
 
   """
   @spec inc(t, actor, pos_integer) :: t
-  def inc(%Counter{p: p}=c, actor, int \\ 1) when int > 0 do
-    %Counter{c|p: Map.update(p, actor, int, &(&1+int))}
+  def inc(%Counter{p: p} = c, actor, int \\ 1) when int > 0 do
+    %Counter{c | p: Map.update(p, actor, int, &(&1 + int))}
   end
 
   @doc """
@@ -95,8 +99,8 @@ defmodule Loom.PNCounter do
 
   """
   @spec dec(t, actor, pos_integer) :: t
-  def dec(%Counter{n: n}=c, actor, int \\ 1) when int > 0 do
-    %Counter{c|n: Map.update(n, actor, int, &(&1+int))}
+  def dec(%Counter{n: n} = c, actor, int \\ 1) when int > 0 do
+    %Counter{c | n: Map.update(n, actor, int, &(&1 + int))}
   end
 
   @doc """
@@ -106,7 +110,7 @@ defmodule Loom.PNCounter do
   """
   @spec value(t) :: integer
   def value(%Counter{p: p, n: n}) do
-    (Map.values(p) |> Enum.sum) - (Map.values(n) |> Enum.sum)
+    (Map.values(p) |> Enum.sum()) - (Map.values(n) |> Enum.sum())
   end
 
   @doc """
@@ -122,15 +126,13 @@ defmodule Loom.PNCounter do
   @spec join(t, t) :: t
   def join(%Counter{p: p1, n: n1}, %Counter{p: p2, n: n2}) do
     %Counter{
-      p: Map.merge(p1, p2, fn (_,v1,v2) -> max(v1,v2) end),
-      n: Map.merge(n1, n2, fn (_,v1,v2) -> max(v1,v2) end)
+      p: Map.merge(p1, p2, fn _, v1, v2 -> max(v1, v2) end),
+      n: Map.merge(n1, n2, fn _, v1, v2 -> max(v1, v2) end)
     }
   end
-
 end
 
 defimpl Loom.CRDT, for: Loom.PNCounter do
-
   alias Loom.PNCounter, as: Ctr
 
   @doc """
@@ -140,17 +142,19 @@ defimpl Loom.CRDT, for: Loom.PNCounter do
   returns an integer.
   """
   def ops(_crdt) do
-    [ update: [
-      inc: [:actor],
-      inc: [:actor, :int],
-      dec: [:actor],
-      dec: [:actor, :int]
+    [
+      update: [
+        inc: [:actor],
+        inc: [:actor, :int],
+        dec: [:actor],
+        dec: [:actor, :int]
       ],
       read: [
         value: []
       ]
     ]
   end
+
   @doc """
   Applies a CRDT to a counter in an abstract way.
 
@@ -171,6 +175,7 @@ defimpl Loom.CRDT, for: Loom.PNCounter do
   def apply(crdt, {:dec, actor}), do: Ctr.dec(crdt, actor)
   def apply(crdt, {:dec, actor, int}), do: Ctr.dec(crdt, actor, int)
   def apply(crdt, :value), do: Ctr.value(crdt)
+
   @doc """
   Joins 2 CRDT's of the same type.
 
@@ -186,10 +191,10 @@ defimpl Loom.CRDT, for: Loom.PNCounter do
       -3
 
   """
-  def join(%Ctr{}=a, %Ctr{}=b), do: Ctr.join(a, b)
+  def join(%Ctr{} = a, %Ctr{} = b), do: Ctr.join(a, b)
+
   @doc """
   Returns the most natural value for a counter, an integer.
   """
   def value(crdt), do: Ctr.value(crdt)
-
 end
