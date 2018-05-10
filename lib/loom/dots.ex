@@ -42,9 +42,7 @@ defmodule Loom.Dots do
   """
   @spec new() :: t
   def new, do: %Dots{}
-  def new(initial_counter: initial_counter), do
-    %Dots{initial_counter: initial_counter}
-  end
+  def new(initial_counter: initial_counter), do: %Dots{initial_counter: initial_counter}
 
   @doc """
   Checks for a dot's membership
