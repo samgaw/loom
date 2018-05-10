@@ -21,6 +21,15 @@ defmodule Loom.AWORSet do
 
   defstruct dots: %Dots{}, keep_delta: true, delta: nil
 
+  def init(%Set{dots: d, delta: delta_dots}=set, actor, value) do
+    if member?(set, value) do
+      set
+    else
+      with {new_dots, new_delta_dots} <- Dots.init({d, delta_dots}, actor, value),
+      do: %Set{set | dots: new_dots, delta: new_delta_dots}
+    end
+  end
+
   @doc """
   Creates a new AWORSet
 
@@ -32,7 +41,13 @@ defmodule Loom.AWORSet do
 
   """
   @spec new() :: t
-  def new, do: %Set{dots: Dots.new, delta: Dots.new}
+  def new(options \\ []) do
+    initial_counter = Keyword.get(options, :initial_counter, 0)
+    dots = Keyword.get(options, :dots, Dots.new(initial_counter: initial_counter))
+    delta = Keyword.get(options, :delta, Dots.new(initial_counter: initial_counter))
+    keep_delta = Keyword.get(options, :keep_delta, true)
+    %Set{dots: dots, keep_delta: keep_delta, delta: delta}
+  end
 
   @doc """
   Grab the delta from an AWORSet for lower-cost synchronization.
